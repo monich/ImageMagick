@@ -1,20 +1,20 @@
-%global VERSION  6.8.7
 %global MAJOR_VERSION  6
-%global Patchlevel  10
+%global FULL_VERSION  6.8.7
 
 Name:           ImageMagick
-Version:        %{VERSION}
-Release:        %{Patchlevel}
-Summary:        Use ImageMagick to convert, edit, or compose bitmap images in a variety of formats.  In addition resize, rotate, shear, distort and transform images.
+Version:        6.8.7
+Release:        10
+Summary:        Convert, edit, or compose bitmap images in a variety of formats
 Group:          Applications/Multimedia
 License:        http://www.imagemagick.org/script/license.php
 Url:            http://www.imagemagick.org/
-Source0:        http://www.imagemagick.org/download/%{name}/%{name}-%{VERSION}-%{Patchlevel}.tar.bz2
+Source0:        %{name}-%{version}.tar.bz2
 
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildRequires: python
 BuildRequires:  bzip2-devel, freetype-devel, libjpeg-devel, libpng-devel
 BuildRequires:  libtool-ltdl-devel
 BuildRequires:  libtiff-devel, giflib-devel, zlib-devel
+BuildRequires:  libgomp
 
 %description
 ImageMagick is a software suite to create, edit, and compose bitmap images. It
@@ -22,7 +22,7 @@ can read, convert and write images in a variety of formats (about 100)
 including DPX, GIF, JPEG, JPEG-2000, PDF, PhotoCD, PNG, Postscript, SVG,
 and TIFF. Use ImageMagick to translate, flip, mirror, rotate, scale, shear
 and transform images, adjust image colors, apply various special effects,
-or draw text, lines, polygons, ellipses and Bézier curves.
+or draw text, lines, polygons, ellipses and Bezier curves.
 
 The functionality of ImageMagick is typically utilized from the command line
 or you can use the features from programs written in your favorite programming
@@ -46,19 +46,23 @@ code that you may freely use, copy, modify, and distribute in both open and
 proprietary applications. It is distributed under an Apache 2.0-style license,
 approved by the OSI.
 
+%package tools
+Summary: ImageMagick tools
+Group: Applications/Multimedia
+Requires: %{name} = %{version}-%{release}
+
+%description tools
+ImageMagick command line tools.
 
 %package devel
 Summary: Library links and header files for ImageMagick application development
 Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
-Requires: libX11-devel, libXext-devel, libXt-devel
 Requires: bzip2-devel
 Requires: freetype-devel
 Requires: libtiff-devel
 Requires: libjpeg-devel
-Requires: jasper-devel
 Requires: pkgconfig
-Requires: %{name}-libs = %{version}-%{release}
 
 %description devel
 ImageMagick-devel contains the library links and header files you will
@@ -70,15 +74,8 @@ APIs, you need to install ImageMagick-devel as well as ImageMagick.
 You do not need to install it if you just want to use ImageMagick,
 however.
 
-%package libs
-Summary: ImageMagick libraries to link with
-Group: Applications/Multimedia
-
-%description libs
-This packages contains a shared libraries to use within other applications.
-
 %prep
-%setup -q -n %{name}-%{VERSION}-%{Patchlevel}
+%setup -q -n %{name}-%{version}
 sed -i 's/libltdl.la/libltdl.so/g' configure
 iconv -f ISO-8859-1 -t UTF-8 README.txt > README.txt.tmp
 touch -r README.txt README.txt.tmp
@@ -100,41 +97,36 @@ cp -p Magick++/demo/*.cpp Magick++/demo/*.miff Magick++/examples
            --without-lcms \
            --without-rsvg \
            --without-xml \
-           --without-dps \
-           --prefix=/usr
+           --without-dps
+
 # Disable rpath
 sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool
 sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
 # Do *NOT* use %%{?_smp_mflags}, this causes PerlMagick to be silently misbuild
 make
 
-
 %install
 rm -rf %{buildroot}
 
 make install DESTDIR=%{buildroot} INSTALL="install -p"
-rm %{buildroot}%{_libdir}/*.la
 
 %clean
 rm -rf %{buildroot}
 
-%post libs -p /sbin/ldconfig
+%post -p /sbin/ldconfig
 
-%postun libs -p /sbin/ldconfig
+%postun -p /sbin/ldconfig
 
 %files
 %defattr(-,root,root,-)
-%doc QuickStart.txt ChangeLog Platforms.txt
-%doc README.txt LICENSE NOTICE AUTHORS.txt NEWS.txt
 %{_libdir}/libMagickCore*so*
 %{_libdir}/libMagickWand*so*
-%{_bindir}/[a-z]*
-%{_libdir}/%{name}-%{VERSION}
+%{_libdir}/%{name}-%{FULL_VERSION}
 %{_datadir}/%{name}-%{MAJOR_VERSION}
-%{_sysconfdir}/%{name}-%{MAJOR_VERSION}
-%exclude %{_mandir}/man[145]/[a-z]*
-%exclude %{_mandir}/man1/%{name}.*
-%exclude %{_datadir}/doc/*
+%config %{_sysconfdir}/%{name}-%{MAJOR_VERSION}/*
+
+%files tools
+%{_bindir}/[a-z]*
 
 %files devel
 %defattr(-,root,root,-)
@@ -142,21 +134,19 @@ rm -rf %{buildroot}
 %{_bindir}/Magick-config
 %{_bindir}/MagickWand-config
 %{_bindir}/Wand-config
-%{_libdir}/libMagickCore*so*
-%{_libdir}/libMagickWand*so*
-%{_libdir}/pkgconfig/MagickCore*.pc
-%{_libdir}/pkgconfig/ImageMagick*.pc
-%{_libdir}/pkgconfig/MagickWand*.pc
-%{_libdir}/pkgconfig/Wand*.pc
+%{_libdir}/pkgconfig/MagickCore.pc
+%{_libdir}/pkgconfig/ImageMagick.pc
+%{_libdir}/pkgconfig/MagickWand.pc
+%{_libdir}/pkgconfig/Wand.pc
 %dir %{_includedir}/%{name}-%{MAJOR_VERSION}
 %{_includedir}/%{name}-%{MAJOR_VERSION}/magick
 %{_includedir}/%{name}-%{MAJOR_VERSION}/wand
-%{_mandir}/man1/Magick-config.*
-%{_mandir}/man1/MagickCore-config.*
-%{_mandir}/man1/Wand-config.*
-%{_mandir}/man1/MagickWand-config.*
+
+%exclude %{_libdir}/*.la
+%exclude %{_libdir}/pkgconfig/*-*.pc
 %exclude %{_datadir}/doc/*
+%exclude %{_mandir}/man*
 
 %changelog
-* Sun May 01 2005 Cristy <cristy@mystic.es.dupont.com> 1.0-0
--  Port of Redhat's RPM script to support ImageMagick.
+* Wed Feb 26 2014 Slava Monich <slava.monich@jolla.com> 1.0-0
+- RPM spec for Jolla OBS build
